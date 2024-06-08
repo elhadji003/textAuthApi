@@ -89,7 +89,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
       return res.status(401).json({ msg: 'Non autorisé' });
     }
 
-    await Text.findByIdAndRemove(req.params.id);
+    await Text.findByIdAndDelete(req.params.id);
 
     res.json({ msg: 'Texte supprimé' });
   } catch (err) {
@@ -97,5 +97,6 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     res.status(500).send('Erreur du serveur');
   }
 });
+
 
 module.exports = router;
