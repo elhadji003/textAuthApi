@@ -1,7 +1,7 @@
 // routes/text.js
 const express = require("express");
 const { check, validationResult } = require("express-validator");
-const Text = require("../models/hotelSchema");
+const Hotel = require("../models/hotelSchema");
 const User = require("../models/userSchema"); // Assurez-vous d'importer le modèle utilisateur
 const authenticateToken = require("../middleware/verifyToken");
 const router = express.Router();
@@ -45,7 +45,7 @@ router.post(
         return res.status(404).json({ msg: "Utilisateur non trouvé" });
       }
 
-      const newText = new Text({
+      const newText = new Hotel({
         user: req.user.id,
         nameHotel: req.body.nameHotel,
         email: req.body.email,
@@ -70,7 +70,7 @@ router.post(
 // Obtenir tous les textes de l'utilisateur connecté
 router.get("/", authenticateToken, async (req, res) => {
   try {
-    const texts = await Text.find({ user: req.user.id }).sort({
+    const texts = await Hotel.find({ user: req.user.id }).sort({
       createdAt: -1,
     });
     res.json(texts);
@@ -80,12 +80,11 @@ router.get("/", authenticateToken, async (req, res) => {
   }
 });
 
-// Mettre à jour un hotel
+//modifier
 router.put(
   "/:id",
   authenticateToken,
   upload.single("image"),
-
   [
     check("email", "Un email valide est requis").isEmail(),
     check("nameHotel", "Le nom de l'hôtel est requis").not().isEmpty(),
@@ -96,37 +95,46 @@ router.put(
   ],
   async (req, res) => {
     try {
+      // Validate request
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
         return res.status(400).json({ errors: errors.array() });
       }
 
-      let text = await Text.findById(req.params.id);
-      if (!text) {
-        return res.status(404).json({ msg: "Texte non trouvé" });
+      // Find the hotel by ID
+      let hotel = await Hotel.findById(req.params.id);
+      if (!hotel) {
+        return res.status(404).json({ msg: "Hôtel non trouvé" });
       }
 
-      if (text.user.toString() !== req.user.id) {
+      // Check if the user is authorized to update this hotel
+      if (hotel.user.toString() !== req.user.id) {
         return res.status(401).json({ msg: "Non autorisé" });
       }
 
-      text = await Text.findByIdAndUpdate(
-        req.params.id,
-        {
-          email: req.body.email,
-          nameHotel: req.body.nameHotel,
-          address: req.body.address,
-          price: req.body.price,
-          number: req.body.number,
-          devise: req.body.devise,
-          image: `${req.protocol}://${req.get("host")}/uploads/${
-            req.file.filename
-          }`,
-        },
-        { new: true }
-      );
+      const updateData = {
+        email: req.body.email,
+        nameHotel: req.body.nameHotel,
+        address: req.body.address,
+        price: req.body.price,
+        number: req.body.number,
+        devise: req.body.devise,
+      };
 
-      res.json(text);
+      // Add the image URL if a new image is uploaded
+      if (req.file) {
+        updateData.image = `${req.protocol}://${req.get("host")}/uploads/${
+          req.file.filename
+        }`;
+      }
+
+      // Save the updated hotel
+      hotel = await Hotel.findByIdAndUpdate(req.params.id, updateData, {
+        new: true,
+      });
+
+      // Respond with the updated hotel data
+      res.json(hotel);
     } catch (err) {
       console.error(err.message);
       res.status(500).send("Erreur du serveur");
@@ -137,7 +145,7 @@ router.put(
 // Supprimer un texte
 router.delete("/:id", authenticateToken, async (req, res) => {
   try {
-    let text = await Text.findById(req.params.id);
+    let text = await Hotel.findById(req.params.id);
     if (!text) {
       return res.status(404).json({ msg: "Texte non trouvé" });
     }
@@ -147,7 +155,7 @@ router.delete("/:id", authenticateToken, async (req, res) => {
       return res.status(401).json({ msg: "Non autorisé" });
     }
 
-    await Text.findByIdAndDelete(req.params.id);
+    await Hotel.findByIdAndDelete(req.params.id);
 
     res.json({ msg: "Texte supprimé" });
   } catch (err) {
