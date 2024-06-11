@@ -78,9 +78,11 @@ router.get("/me", auth, async (req, res) => {
 });
 
 // Upload de l'image de profil
+// Logique pour mettre à jour l'image de profil d'un utilisateur
 router.post(
-  "/uploadProfileImage",
-  [auth, upload.single("profileImage")],
+  "/updateProfileImage",
+  auth,
+  upload.single("profileImage"),
   async (req, res) => {
     try {
       const user = await User.findById(req.user.id);
@@ -93,17 +95,36 @@ router.post(
         return res.status(400).send("Aucun fichier téléchargé");
       }
 
-      user.profileImage = `${req.protocol}://${req.get("host")}/uploads/${
+      user.profileImageUrl = `${req.protocol}://${req.get("host")}/uploads/${
         req.file.filename
       }`;
       await user.save();
 
-      res.send({ profileImageUrl: user.profileImage });
+      res.send({ profileImageUrl: user.profileImageUrl });
     } catch (err) {
       console.error(err.message);
       res.status(500).send("Erreur du serveur");
     }
   }
 );
+
+// Par exemple, dans votre route qui gère l'affichage du profil d'un utilisateur
+router.get("/profile/:userId", async (req, res) => {
+  try {
+    const userId = req.params.userId;
+
+    // Récupérer l'URL de l'image de profil de l'utilisateur spécifié
+    const userProfileImage = await User.findById(userId).select(
+      "profileImageUrl"
+    );
+    const profileImageUrl = userProfileImage.profileImageUrl;
+
+    // Ensuite, vous pouvez envoyer cette URL dans la réponse pour l'affichage dans votre interface utilisateur
+    res.json({ profileImageUrl });
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send("Erreur du serveur");
+  }
+});
 
 module.exports = router;
